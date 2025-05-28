@@ -12,9 +12,9 @@
   "browser_action": {
     "default_popup": "popup.html",
     "default_icon": {
-      "16": "setup-logo.bmp",
-      "48": "setup-logo.bmp",
-      "128": "setup-logo.bmp"
+      "16": "trmnl-icon.png",
+      "48": "trmnl-icon.png",
+      "128": "trmnl-icon.png"
     }
   },
   "chrome_url_overrides": {
@@ -27,7 +27,7 @@
   "content_scripts": [
     {
       "matches": [
-        "https://usetrmnl.com/*", 
+        "https://usetrmnl.com/*",
         "https://www.usetrmnl.com/*",
         "https://app.usetrmnl.com/*",
         "http://localhost:3000/*"
@@ -37,9 +37,9 @@
   ],
   "devtools_page": "devtools.html",
   "icons": {
-    "16": "setup-logo.bmp",
-    "48": "setup-logo.bmp",
-    "128": "setup-logo.bmp"
+    "16": "trmnl-icon.png",
+    "48": "trmnl-icon.pngp",
+    "128": "trmnl-icon.png"
   },
   "browser_specific_settings": {
     "gecko": {
