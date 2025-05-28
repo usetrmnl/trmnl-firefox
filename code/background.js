@@ -1,6 +1,3 @@
-// Include browser-polyfill.js in your manifest
-// This allows using browser.* APIs with promises
-
 // Background script for TRMNL New Tab Display extension
 
 browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -24,6 +21,46 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
       })
       .catch((err) => {
         console.error("Error during forced refresh:", err);
+        if (sendResponse) sendResponse({ success: false, error: err.message });
+      });
+    return true;
+  } else if (request.action === "logout") {
+    performLogout()
+      .then(() => {
+        if (sendResponse) sendResponse({ success: true });
+      })
+      .catch((err) => {
+        console.error("Error during logout:", err);
+        if (sendResponse) sendResponse({ success: false, error: err.message });
+      });
+    return true;
+  } else if (request.action === "refreshDevices") {
+    fetchAndStoreDevices()
+      .then(() => {
+        if (sendResponse) sendResponse({ success: true });
+      })
+      .catch((err) => {
+        console.error("Error refreshing devices:", err);
+        if (sendResponse) sendResponse({ success: false, error: err.message });
+      });
+    return true;
+  } else if (request.action === "startLogin") {
+    startLoginFlow()
+      .then(() => {
+        if (sendResponse) sendResponse({ success: true });
+      })
+      .catch((err) => {
+        console.error("Error starting login flow:", err);
+        if (sendResponse) sendResponse({ success: false, error: err.message });
+      });
+    return true;
+  } else if (request.action === "loginSuccess") {
+    handleLoginSuccess()
+      .then(() => {
+        if (sendResponse) sendResponse({ success: true });
+      })
+      .catch((err) => {
+        console.error("Error handling login success:", err);
         if (sendResponse) sendResponse({ success: false, error: err.message });
       });
     return true;
@@ -197,29 +234,34 @@ async function sendCurrentImage(sendResponse) {
 browser.runtime.onInstalled.addListener(async () => {
   console.log("TRMNL New Tab Display extension installed");
 
-  // Set default environment and get devices
+  // Set default environment
   await browser.storage.local.set({ environment: "production" });
   API_URL = await getApiUrl();
 
-  const devices = await fetchAndStoreDevices();
+  // Check if user is already authenticated
+  const isAuthenticated = await checkAuthentication();
+  
+  if (isAuthenticated) {
+    console.log("User is already authenticated, fetching devices");
+    const devices = await fetchAndStoreDevices();
 
-  if (devices && devices.length > 0) {
-    // Set the first device and its API key
-    await browser.storage.local.set({
-      selectedDevice: devices[0],
-      lastFetch: 0,
-      nextFetch: 0,
-      refreshRate: DEFAULT_REFRESH_RATE,
-      retryCount: 0,
-      retryAfter: null,
-    });
+    if (devices && devices.length > 0) {
+      // Set the first device and its API key
+      await browser.storage.local.set({
+        selectedDevice: devices[0],
+        lastFetch: 0,
+        nextFetch: 0,
+        refreshRate: DEFAULT_REFRESH_RATE,
+        retryCount: 0,
+        retryAfter: null,
+      });
 
-    // Attempt to fetch an image with the device's API key
-    fetchTrmnlImage();
+      // Start the initial image fetch
+      fetchTrmnlImage();
+    }
+  } else {
+    console.log("User not authenticated, will need to login");
   }
-
-  // Set up alarm for periodic image fetching
-  setupRefreshAlarm(DEFAULT_REFRESH_RATE);
 });
 
 // Listen for alarms to trigger image refresh
@@ -327,17 +369,117 @@ async function checkStorageUsage() {
 
 let fetchInProgress = false;
 
-// Fetch an image from the TRMNL API
-async function fetchTrmnlImage(forceRefresh = false) {
-  console.log("Fetching TRMNL image");
+// Start the login flow by opening the login page
+async function startLoginFlow() {
+  console.log("Starting login flow");
+  const loginUrl = await getLoginUrl();
+  
+  // Open login page in a new tab
+  await browser.tabs.create({ 
+    url: loginUrl,
+    active: true
+  });
+  
+  console.log("Login page opened:", loginUrl);
+}
 
-  // Prevent concurrent fetches
-  if (fetchInProgress) {
+// Handle successful login - fetch devices and setup extension
+async function handleLoginSuccess() {
+  console.log("Handling successful login");
+  
+  try {
+    // Fetch devices from the API
+    const devices = await fetchAndStoreDevices();
+    
+    if (devices && devices.length > 0) {
+      console.log("Login successful - devices fetched:", devices.length);
+      
+      // Set up the extension with the first device
+      await browser.storage.local.set({
+        selectedDevice: devices[0],
+        apiKey: devices[0].api_key,
+        lastFetch: 0,
+        nextFetch: 0,
+        refreshRate: DEFAULT_REFRESH_RATE,
+        retryCount: 0,
+        retryAfter: null,
+      });
+      
+      // Start fetching images
+      setTimeout(() => {
+        fetchTrmnlImage(true);
+      }, 1000);
+      
+      // Notify all new tab pages that login was successful
+      const tabs = await browser.tabs.query({});
+      for (const tab of tabs) {
+        if (tab.url && tab.url.includes('newtab.html')) {
+          browser.tabs.sendMessage(tab.id, { action: "loginSuccess" }).catch(() => {
+            // Ignore errors for tabs that can't receive messages
+          });
+        }
+      }
+      
+      return true;
+    } else {
+      throw new Error("No devices found after login");
+    }
+  } catch (error) {
+    console.error("Error during login success handling:", error);
+    throw error;
+  }
+}
+
+// Check if user is authenticated by trying to fetch devices
+async function checkAuthentication() {
+  try {
+    const baseUrl = await getBaseUrl();
+    const response = await fetch(`${baseUrl}/devices.json`);
+    
+    if (response.ok) {
+      console.log("User is authenticated");
+      return true;
+    } else if (response.status === 401 || response.status === 403) {
+      console.log("User is not authenticated");
+      return false;
+    } else {
+      console.warn("Unexpected response status:", response.status);
+      return false;
+    }
+  } catch (error) {
+    console.error("Error checking authentication:", error);
+    return false;
+  }
+}
+
+// Fetch an image from the TRMNL API
+async function performLogout() {
+  console.log("Performing logout - clearing all extension data");
+  
+  // Clear all stored data
+  await browser.storage.local.clear();
+  
+  // Clear any active alarms
+  const alarms = await browser.alarms.getAll();
+  for (const alarm of alarms) {
+    await browser.alarms.clear(alarm.name);
+  }
+  
+  console.log("Logout completed - all data cleared");
+  
+  // New tab pages will automatically redirect via storage change listener
+  console.log("New tab pages will be redirected automatically via storage change detection");
+}
+
+async function fetchTrmnlImage(forceRefresh = false) {
+  // Prevent concurrent requests
+  if (fetchInProgress && !forceRefresh) {
     console.log("Fetch already in progress, skipping");
     return null;
   }
 
   fetchInProgress = true;
+  const currentTime = Date.now();
 
   // Get the current API URL and initialize environment if needed
   const environment = await browser.storage.local.get("environment");
@@ -358,8 +500,6 @@ async function fetchTrmnlImage(forceRefresh = false) {
   ]);
 
   const apiKey = storage.selectedDevice?.api_key;
-
-  const currentTime = Date.now();
 
   // If no API key, try to get one from devices first
   if (!apiKey) {

@@ -3,14 +3,14 @@
 require 'rubygems'
 require 'zip'
 
-if File.exist?('./extension.xpi')
-  File.delete('./extension.xpi')
+if File.exist?('./trmnl-firefox.xpi')
+  File.delete('./trmnl-firefox.xpi')
 end
 
 # Define paths
 source_dir = './code'
-output_zip = 'extension.zip'
-output_xpi = 'extension.xpi'
+output_zip = 'trmnl-firefox.zip'
+output_xpi = 'trmnl-firefox.xpi'
 
 # Delete old files if they exist
 [output_zip, output_xpi].each { |f| File.delete(f) if File.exist?(f) }

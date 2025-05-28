@@ -2,6 +2,17 @@
 
 document.addEventListener("DOMContentLoaded", initNewTab);
 
+// Listen for storage changes to detect logout
+browser.storage.onChanged.addListener((changes, namespace) => {
+  if (namespace === "local") {
+    // Check if critical data was cleared (logout)
+    if (changes.devices && !changes.devices.newValue) {
+      console.log("Devices cleared - user logged out");
+      redirectToLogin();
+    }
+  }
+});
+
 // DOM references
 const imageElement = document.getElementById("trmnl-image");
 const loadingElement = document.getElementById("loading");
@@ -10,8 +21,7 @@ const infoOverlay = document.getElementById("info-overlay");
 const nextRefreshElement = document.getElementById("next-refresh-time");
 const refreshButton = document.getElementById("refresh-now");
 const settingsButton = document.getElementById("open-settings");
-const apiKeyInput = document.getElementById("api-key-input");
-const saveApiKeyButton = document.getElementById("save-api-key");
+const logoutButton = document.getElementById("logout-btn");
 
 // State
 let refreshTimeoutId = null;
@@ -20,6 +30,13 @@ let countdownIntervalId = null;
 // Initialize the new tab page
 async function initNewTab() {
   try {
+    // Check if user is logged out
+    if (await isLoggedOut()) {
+      console.log("User is logged out, redirecting to login");
+      await redirectToLogin();
+      return;
+    }
+
     // First try to get the environment setting
     const { environment } = await browser.storage.local.get("environment");
     const baseUrl =
@@ -54,7 +71,7 @@ async function initNewTab() {
 
     // If unauthorized or forbidden, redirect to login
     if (response.status === 401 || response.status === 403) {
-      window.location.href = `${baseUrl}/login`;
+      await redirectToLogin();
       return;
     }
 
@@ -68,7 +85,7 @@ async function initNewTab() {
 
     if (!devices || devices.length === 0) {
       // No devices available, redirect to login
-      window.location.href = `${baseUrl}/login`;
+      await redirectToLogin();
       return;
     }
 
@@ -86,12 +103,7 @@ async function initNewTab() {
   } catch (error) {
     console.error("Error during initialization:", error);
     // On any error, redirect to login
-    const { environment } = await browser.storage.local.get("environment");
-    const baseUrl =
-      environment === "development"
-        ? "http://localhost:3000"
-        : "https://usetrmnl.com";
-    window.location.href = `${baseUrl}/login`;
+    await redirectToLogin();
   }
 }
 
@@ -106,28 +118,32 @@ function setupEventListeners() {
 
   // Settings button
   settingsButton.addEventListener("click", () => {
-    // Firefox doesn't have chrome.action.openPopup()
-    // Instead, we could open a small popup window with the settings
-    browser.browserAction.openPopup();
+    // For Firefox, show an inline settings panel instead of popup
+    showInlineSettings();
   });
 
-  // Save API key button
-  saveApiKeyButton.addEventListener("click", saveApiKey);
-  apiKeyInput.addEventListener("keypress", (e) => {
-    if (e.key === "Enter") {
-      saveApiKey();
+  // Logout button
+  logoutButton.addEventListener("click", () => {
+    performLogout();
+  });
+
+  // Login button - add event listener when it appears
+  document.addEventListener("click", (e) => {
+    if (e.target && e.target.id === "login-now") {
+      startLogin();
     }
   });
 
-  // Listen for image updates from background
+  // Listen for messages from background
   browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === "imageUpdated") {
       console.log("Received image update notification");
       loadImage();
-      // Always call sendResponse in message listeners
       if (sendResponse) sendResponse({ received: true });
+    } else if (message.action === "loginSuccess") {
+      console.log("Login success detected, refreshing new tab");
+      window.location.reload();
     }
-    // Return true if sendResponse will be called asynchronously
     return false;
   });
 }
@@ -141,9 +157,7 @@ async function loadImage() {
     .sendMessage({ action: "getCurrentImage" })
     .then((response) => {
       if (!response || !response.currentImage) {
-        errorContainer.querySelector("p").textContent =
-          "Please select a TRMNL device to view images.";
-        showApiKeyPrompt();
+        showLoginPrompt();
         return;
       }
 
@@ -174,29 +188,58 @@ async function loadImage() {
     });
 }
 
-// Save the API key
-function saveApiKey() {
-  const apiKey = apiKeyInput.value.trim();
-  if (apiKey) {
-    browser.runtime
-      .sendMessage({
-        action: "saveApiKey",
-        apiKey: apiKey,
-      })
-      .then(() => {
-        // Clear input and refresh the display
-        apiKeyInput.value = "";
-        errorContainer.classList.add("hidden");
-        loadImage();
-      });
-  }
+// Start login flow
+function startLogin() {
+  browser.runtime.sendMessage({ action: "startLogin" }).then((response) => {
+    if (response && response.success) {
+      const errorText = errorContainer.querySelector("p");
+      if (errorText) {
+        errorText.textContent = "Login page opened - please complete login in the new tab.";
+      }
+      // Check for login success
+      checkForLoginSuccess();
+    } else {
+      const errorText = errorContainer.querySelector("p");
+      if (errorText) {
+        errorText.textContent = "Error opening login page. Please try again.";
+      }
+    }
+  }).catch((error) => {
+    console.error("Login error:", error);
+    const errorText = errorContainer.querySelector("p");
+    if (errorText) {
+      errorText.textContent = "Error opening login page. Please try again.";
+    }
+  });
 }
 
-// Show the API key prompt
-function showApiKeyPrompt() {
+// Check for login success periodically
+function checkForLoginSuccess() {
+  const checkInterval = setInterval(async () => {
+    const { devices } = await browser.storage.local.get(["devices"]);
+    
+    if (devices && devices.length > 0) {
+      clearInterval(checkInterval);
+      window.location.reload();
+    }
+  }, 2000);
+  
+  // Stop checking after 2 minutes
+  setTimeout(() => {
+    clearInterval(checkInterval);
+  }, 120000);
+}
+
+// Show the login prompt
+function showLoginPrompt() {
   loadingElement.classList.add("hidden");
   imageElement.classList.add("hidden");
   errorContainer.classList.remove("hidden");
+  
+  const errorText = errorContainer.querySelector("p");
+  if (errorText) {
+    errorText.textContent = "Please log in to your TRMNL account to view your devices.";
+  }
 }
 
 // Update the refresh countdown timer
@@ -268,7 +311,106 @@ function updateCountdown(nextFetchTimestamp) {
   nextRefreshElement.textContent = `${padZero(hours)}:${padZero(minutes)}:${padZero(seconds)}`;
 }
 
+// Show inline settings panel (Firefox-compatible)
+function showInlineSettings() {
+  // Create or show a simple inline settings overlay
+  let settingsOverlay = document.getElementById("settings-overlay");
+  if (!settingsOverlay) {
+    settingsOverlay = document.createElement("div");
+    settingsOverlay.id = "settings-overlay";
+    settingsOverlay.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    `;
+    
+    const settingsPanel = document.createElement("div");
+    settingsPanel.style.cssText = `
+      background: #1a1a1a;
+      padding: 20px;
+      border-radius: 8px;
+      color: white;
+      max-width: 400px;
+      width: 90%;
+    `;
+    
+    settingsPanel.innerHTML = `
+      <h3 style="margin-top: 0;">TRMNL Settings</h3>
+      <p>To access full settings, click the TRMNL icon in your browser toolbar.</p>
+      <button id="close-settings" style="background: #4a5568; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-top: 16px;">Close</button>
+    `;
+    
+    settingsOverlay.appendChild(settingsPanel);
+    document.body.appendChild(settingsOverlay);
+    
+    // Close button functionality
+    document.getElementById("close-settings").addEventListener("click", () => {
+      settingsOverlay.remove();
+    });
+    
+    // Close on overlay click
+    settingsOverlay.addEventListener("click", (e) => {
+      if (e.target === settingsOverlay) {
+        settingsOverlay.remove();
+      }
+    });
+  } else {
+    settingsOverlay.style.display = "flex";
+  }
+}
+
 // Helper to pad numbers with leading zeros
 function padZero(num) {
   return num.toString().padStart(2, "0");
+}
+
+// Check if user is logged out (no critical data)
+async function isLoggedOut() {
+  const storage = await browser.storage.local.get([
+    "devices",
+    "selectedDevice",
+    "apiKey"
+  ]);
+  
+  // If we have no devices AND no API key, consider user logged out
+  return (!storage.devices || storage.devices.length === 0) && !storage.apiKey;
+}
+
+// Redirect to login page
+async function redirectToLogin() {
+  const { environment } = await browser.storage.local.get("environment");
+  const baseUrl =
+    environment === "development"
+      ? "http://localhost:3000"
+      : "https://usetrmnl.com";
+  
+  console.log("Redirecting to login:", `${baseUrl}/login`);
+  window.location.href = `${baseUrl}/login`;
+}
+
+// Perform logout
+function performLogout() {
+  if (!confirm("Are you sure you want to logout? This will clear all extension data and you'll need to login again.")) {
+    return;
+  }
+
+  browser.runtime.sendMessage({ action: "logout" }).then((response) => {
+    if (response && response.success) {
+      console.log("Logout successful");
+      // The background script will redirect us to login
+    } else {
+      console.error("Logout failed:", response);
+      alert("Logout failed. Please try again.");
+    }
+  }).catch((error) => {
+    console.error("Logout error:", error);
+    alert("Logout failed. Please try again.");
+  });
 }

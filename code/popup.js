@@ -6,6 +6,14 @@ document.addEventListener("DOMContentLoaded", initPopup);
 let apiKeyInput;
 let saveButton;
 let refreshButton;
+let logoutButton;
+let loginButton;
+let loginPrompt;
+let loginSection;
+let logoutSection;
+let manualApiSection;
+let toggleManualButton;
+let buttonGroup;
 let statusElement;
 let lastUpdatedElement;
 let nextUpdateElement;
@@ -17,12 +25,21 @@ async function initPopup() {
   apiKeyInput = document.getElementById("api-key");
   saveButton = document.getElementById("save-settings");
   refreshButton = document.getElementById("refresh-now");
+  logoutButton = document.getElementById("logout-btn");
+  loginButton = document.getElementById("login-btn");
+  loginPrompt = document.getElementById("login-prompt");
+  loginSection = document.getElementById("login-section");
+  logoutSection = document.getElementById("logout-section");
+  manualApiSection = document.getElementById("manual-api-section");
+  toggleManualButton = document.getElementById("toggle-manual");
+  buttonGroup = document.querySelector(".button-group");
   statusElement = document.getElementById("status");
   lastUpdatedElement = document.getElementById("last-updated");
   nextUpdateElement = document.getElementById("next-update");
   refreshRateElement = document.getElementById("refresh-rate");
 
   setupEventListeners();
+  await checkLoginState();
   await loadSettings();
   await loadDevices();
   updateStatusInfo();
@@ -215,6 +232,21 @@ function setupEventListeners() {
     refreshButton.addEventListener("click", refreshImage);
   }
 
+  // Logout button
+  if (logoutButton) {
+    logoutButton.addEventListener("click", performLogout);
+  }
+
+  // Login button
+  if (loginButton) {
+    loginButton.addEventListener("click", startLogin);
+  }
+
+  // Toggle manual API button
+  if (toggleManualButton) {
+    toggleManualButton.addEventListener("click", toggleManualApiEntry);
+  }
+
   // Enter key in input field
   if (apiKeyInput) {
     apiKeyInput.addEventListener("keypress", (e) => {
@@ -246,6 +278,12 @@ async function saveSettings() {
     });
 
     showStatus("Settings saved");
+    
+    // Update UI state after successful API key save
+    showLoggedInState();
+    await loadDevices();
+    updateStatusInfo();
+    
     setTimeout(hideStatus, 3000);
   } else {
     showStatus("API key cannot be empty", true);
@@ -314,7 +352,7 @@ async function updateStatusInfo() {
 function showStatus(message, isError = false) {
   if (statusElement) {
     statusElement.textContent = message;
-    statusElement.style.color = isError ? "#ff5555" : "#55ff55";
+    statusElement.className = isError ? "status-error" : "status-success";
   }
 }
 
@@ -322,10 +360,172 @@ function showStatus(message, isError = false) {
 function hideStatus() {
   if (statusElement) {
     statusElement.textContent = "";
+    statusElement.className = "";
   }
 }
 
 // Format date and time
 function formatDateTime(date) {
   return date.toLocaleString();
+}
+
+// Check login state and show appropriate UI
+async function checkLoginState() {
+  try {
+    const { devices, apiKey } = await browser.storage.local.get(["devices", "apiKey"]);
+    
+    if ((devices && devices.length > 0) || apiKey) {
+      // User is logged in - hide login prompt
+      showLoggedInState();
+    } else {
+      // User is not logged in - show login prompt
+      showLoggedOutState();
+    }
+  } catch (error) {
+    console.error("Error checking login state:", error);
+    showLoggedOutState();
+  }
+}
+
+// Show UI for logged in state
+function showLoggedInState() {
+  if (loginSection) loginSection.classList.add("hidden");
+  if (logoutSection) logoutSection.classList.remove("hidden");
+  if (manualApiSection) manualApiSection.classList.add("hidden");
+  
+  // Show device selector
+  const deviceSelectGroup = document.getElementById('device-selector-group');
+  if (deviceSelectGroup) deviceSelectGroup.classList.remove("hidden");
+  
+  // Show refresh button in advanced section when logged in
+  if (refreshButton) refreshButton.style.display = "block";
+  // Hide save button by default (only show when manual API is active)
+  if (saveButton) saveButton.style.display = "none";
+}
+
+// Show UI for logged out state
+function showLoggedOutState() {
+  if (loginSection) loginSection.classList.remove("hidden");
+  if (logoutSection) logoutSection.classList.add("hidden");
+  if (manualApiSection) manualApiSection.classList.add("hidden");
+  
+  // Hide device selector
+  const deviceSelectGroup = document.getElementById('device-selector-group');
+  if (deviceSelectGroup) deviceSelectGroup.classList.add("hidden");
+  
+  // Hide both buttons when logged out (they're now in advanced section)
+  if (refreshButton) refreshButton.style.display = "none";
+  if (saveButton) saveButton.style.display = "none";
+}
+
+// Start login flow
+function startLogin() {
+  showStatus("Opening login page...");
+  
+  browser.runtime.sendMessage({ action: "startLogin" }).then((response) => {
+    if (response && response.success) {
+      showStatus("Login page opened - please complete login");
+      // Check for login success periodically
+      checkForLoginSuccess();
+    } else {
+      showStatus("Error opening login page", true);
+    }
+  }).catch((error) => {
+    console.error("Login error:", error);
+    showStatus("Error opening login page", true);
+  });
+}
+
+// Check for login success
+function checkForLoginSuccess() {
+  const checkInterval = setInterval(async () => {
+    const { devices } = await browser.storage.local.get(["devices"]);
+    
+    if (devices && devices.length > 0) {
+      clearInterval(checkInterval);
+      showStatus("Login successful!");
+      showLoggedInState();
+      await loadDevices();
+      updateStatusInfo();
+    }
+  }, 2000);
+  
+  // Stop checking after 2 minutes
+  setTimeout(() => {
+    clearInterval(checkInterval);
+  }, 120000);
+}
+
+// Toggle manual API entry
+function toggleManualApiEntry() {
+  if (manualApiSection) {
+    if (manualApiSection.classList.contains("hidden")) {
+      manualApiSection.classList.remove("hidden");
+      toggleManualButton.textContent = "Hide Manual Entry";
+      // Show save settings button when manual API is active
+      if (saveButton) saveButton.style.display = "block";
+    } else {
+      manualApiSection.classList.add("hidden");
+      toggleManualButton.textContent = "Use Manual API Key";
+      // Hide save settings button when manual API is hidden
+      if (saveButton) saveButton.style.display = "none";
+    }
+  }
+}
+
+// Perform logout
+function performLogout() {
+  if (!confirm("Are you sure you want to logout? This will clear all extension data and you'll need to login again.")) {
+    return;
+  }
+
+  showStatus("Logging out...");
+  
+  browser.runtime.sendMessage({ action: "logout" }).then((response) => {
+    if (response && response.success) {
+      showStatus("Logged out successfully");
+      showLoggedOutState();
+      
+      // Clear device selection dropdown
+      const deviceSelect = document.getElementById("device-select");
+      if (deviceSelect) {
+        deviceSelect.innerHTML = '<option value="">No devices found</option>';
+      }
+      
+      // Clear API key input
+      if (apiKeyInput) {
+        apiKeyInput.value = "";
+      }
+      
+      // Clear status info
+      if (lastUpdatedElement) lastUpdatedElement.textContent = "";
+      if (nextUpdateElement) nextUpdateElement.textContent = "";
+      if (refreshRateElement) refreshRateElement.textContent = "";
+      
+      // Hide manual API section if it was open
+      if (manualApiSection) {
+        manualApiSection.classList.add("hidden");
+        if (toggleManualButton) {
+          toggleManualButton.textContent = "Use Manual API Key";
+        }
+      }
+      
+      // Reset button visibility states
+      if (saveButton) saveButton.style.display = "none";
+      if (refreshButton) refreshButton.style.display = "none";
+      
+      // Close advanced section for cleaner state
+      const advancedSection = document.getElementById("advanced-section");
+      if (advancedSection) {
+        advancedSection.open = false;
+      }
+      
+      setTimeout(hideStatus, 3000);
+    } else {
+      showStatus("Error during logout", true);
+    }
+  }).catch((error) => {
+    console.error("Logout error:", error);
+    showStatus("Error during logout", true);
+  });
 }

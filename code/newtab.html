@@ -4,9 +4,9 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>New Tab</title>
-        <script src="browser-polyfill.js"></script>
 
-        <script src="./tailwind_4_0_13.js"></script>
+
+
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
         <link
@@ -58,40 +58,33 @@
             sizes="32x32"
         />
     </head>
-    <body
-        class="flex justify-center bg-trmnl dark:bg-gray-850 max-w-full overflow-x-hidden"
-    >
+    <body class="newtab-body">
         <div id="container">
             <div
                 id="image-container"
-                class="flex flex-col justify-start items-start"
+                class="image-container"
                 style="width: 800px; height: 480px"
             >
                 <img
                     id="trmnl-image"
                     src="/setup-logo.bmp"
                     alt="TRMNL Display"
-                    class="rounded-xl bg-gray-200 dark:bg-gray-700 shadow-sm dark:shadow-black border border-gray-300 dark:border-gray-650"
+                    class="trmnl-image"
                 />
                 <img
                     id="loading"
                     src="/setup-logo.bmp"
                     alt="TRMNL Display"
-                    class="hidden rounded-xl bg-gray-200 dark:bg-gray-700 shadow-sm dark:shadow-black border border-gray-300 dark:border-gray-650"
+                    class="hidden trmnl-image"
                 />
             </div>
 
             <div id="error-container" class="hidden">
                 <div class="error-box">
-                    <h2>TRMNL API Key Required</h2>
-                    <p>Please set your TRMNL API key to view images.</p>
-                    <div class="api-key-input">
-                        <input
-                            type="password"
-                            id="api-key-input"
-                            placeholder="Enter TRMNL API Key"
-                        />
-                        <button id="save-api-key">Save</button>
+                    <h2>Login Required</h2>
+                    <p>Please log in to your TRMNL account to view your devices.</p>
+                    <div class="login-actions">
+                        <button id="login-now">Login to TRMNL</button>
                     </div>
                 </div>
             </div>
@@ -99,11 +92,11 @@
             <div id="info-overlay" class="hidden">
                 <div class="info-content">
                     <p id="refresh-info">
-                        Next refresh:
-                        <span id="next-refresh-time">--:--:--</span>
+                        Next refresh: <span id="next-refresh-time">--:--:--</span>
                     </p>
                     <button id="refresh-now">Refresh Now</button>
                     <button id="open-settings">Settings</button>
+                    <button id="logout-btn">Logout</button>
                 </div>
             </div>
         </div>
