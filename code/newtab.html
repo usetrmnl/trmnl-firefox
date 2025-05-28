@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>New Tab</title>
+        <script src="browser-polyfill.js"></script>
+
+        <script src="./tailwind_4_0_13.js"></script>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..800;1,400..800&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap"
+            rel="stylesheet"
+        />
+        <link rel="stylesheet" href="styles.css" />
+        <link
+            rel="apple-touch-icon"
+            type="image/png"
+            href="https://usetrmnl.com/images/favicons/apple-touch-icon-76x76.png"
+            sizes="76x76"
+        />
+        <link
+            rel="apple-touch-icon"
+            type="image/png"
+            href="https://usetrmnl.com/images/favicons/apple-touch-icon-120x120.png"
+            sizes="120x120"
+        />
+        <link
+            rel="apple-touch-icon"
+            type="image/png"
+            href="https://usetrmnl.com/images/favicons/apple-touch-icon-152x152.png"
+            sizes="152x152"
+        />
+        <link
+            rel="apple-touch-icon"
+            type="image/png"
+            href="https://usetrmnl.com/images/favicons/apple-touch-icon-167x167.png"
+            sizes="167x167"
+        />
+        <link
+            rel="apple-touch-icon"
+            type="image/png"
+            href="https://usetrmnl.com/images/favicons/apple-touch-icon-180x180.png"
+            sizes="180x180"
+        />
+
+        <link
+            rel="icon"
+            type="image/png"
+            href="https://usetrmnl.com/images/favicons/favicon-16x16.png"
+            sizes="16x16"
+        />
+        <link
+            rel="icon"
+            type="image/png"
+            href="https://usetrmnl.com/images/favicons/favicon-32x32.png"
+            sizes="32x32"
+        />
+    </head>
+    <body
+        class="flex justify-center bg-trmnl dark:bg-gray-850 max-w-full overflow-x-hidden"
+    >
+        <div id="container">
+            <div
+                id="image-container"
+                class="flex flex-col justify-start items-start"
+                style="width: 800px; height: 480px"
+            >
+                <img
+                    id="trmnl-image"
+                    src="/setup-logo.bmp"
+                    alt="TRMNL Display"
+                    class="rounded-xl bg-gray-200 dark:bg-gray-700 shadow-sm dark:shadow-black border border-gray-300 dark:border-gray-650"
+                />
+                <img
+                    id="loading"
+                    src="/setup-logo.bmp"
+                    alt="TRMNL Display"
+                    class="hidden rounded-xl bg-gray-200 dark:bg-gray-700 shadow-sm dark:shadow-black border border-gray-300 dark:border-gray-650"
+                />
+            </div>
+
+            <div id="error-container" class="hidden">
+                <div class="error-box">
+                    <h2>TRMNL API Key Required</h2>
+                    <p>Please set your TRMNL API key to view images.</p>
+                    <div class="api-key-input">
+                        <input
+                            type="password"
+                            id="api-key-input"
+                            placeholder="Enter TRMNL API Key"
+                        />
+                        <button id="save-api-key">Save</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="info-overlay" class="hidden">
+                <div class="info-content">
+                    <p id="refresh-info">
+                        Next refresh:
+                        <span id="next-refresh-time">--:--:--</span>
+                    </p>
+                    <button id="refresh-now">Refresh Now</button>
+                    <button id="open-settings">Settings</button>
+                </div>
+            </div>
+        </div>
+
+        <script src="newtab.js"></script>
+    </body>
+</html>

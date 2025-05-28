@@ -1,0 +1,44 @@
+{
+  "manifest_version": 2,
+  "name": "TRMNL New Tab - Stay Focused",
+  "version": "1.0",
+  "description": "Bring TRMNL's calm, distraction-free environment to your new tab page for seamless clarity and focus.",
+  "permissions": [
+    "storage",
+    "alarms",
+    "http://localhost:3000/*",
+    "https://usetrmnl.com/*",
+    "history"
+  ],
+  "browser_action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "chrome_url_overrides": {
+    "newtab": "newtab.html"
+  },
+  "background": {
+    "scripts": ["browser-polyfill.js", "background.js"]
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://usetrmnl.com/*", "http://localhost:3000/*"],
+      "js": ["browser-polyfill.js", "dashboard-content.js"]
+    }
+  ],
+  "devtools_page": "devtools.html",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "trmnl-newtab@usetrmnl.com"
+    }
+  }
+}
