@@ -80,6 +80,7 @@ html {
     max-width: 500px;
     width: 90%;
     text-align: center;
+    color: white;
     box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
 }
 
@@ -89,26 +90,35 @@ html {
     color: #fff;
 }
 
-.login-actions {
+.api-key-input {
+    display: flex;
     margin-top: 20px;
-    text-align: center;
 }
 
-.login-actions button {
-    padding: 12px 24px;
+.api-key-input input {
+    flex: 1;
+    padding: 10px;
     border: none;
-    border-radius: 6px;
-    background-color: #28a745;
+    border-radius: 4px 0 0 4px;
+    font-size: 16px;
+    background-color: #333;
+    color: #fff;
+}
+
+.api-key-input button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 0 4px 4px 0;
+    background-color: rgb(248, 101, 75);
     color: white;
     font-size: 16px;
-    font-weight: 600;
     cursor: pointer;
     transition: background-color 0.2s;
-    min-width: 160px;
 }
 
-.login-actions button:hover {
-    background-color: #218838;
+.api-key-input button:hover {
+    background-color: #ffffff;
+    color: rgb(248, 101, 75);
 }
 
 #info-overlay {
@@ -170,124 +180,4 @@ html {
     .bg-trmnl {
         background-color: rgb(15 15 15);
     }
-}
-
-/* New Tab Body Styles */
-.newtab-body {
-    display: flex;
-    justify-content: center;
-    background-color: #f0f0f0;
-    max-width: 100%;
-    overflow-x: hidden;
-}
-
-@media (prefers-color-scheme: dark) {
-    .newtab-body {
-        background-color: rgb(15 15 15);
-    }
-}
-
-/* TRMNL Image Styles */
-.trmnl-image {
-    border-radius: 12px;
-    background-color: #e5e7eb;
-    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    border: 1px solid #d1d5db;
-}
-
-@media (prefers-color-scheme: dark) {
-    .trmnl-image {
-        background-color: #374151;
-        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.8);
-        border: 1px solid #4b5563;
-    }
-}
-
-/* Popup Styles */
-.popup-body {
-    background-color: rgba(243, 244, 246, 0.8);
-}
-
-@media (prefers-color-scheme: dark) {
-    .popup-body {
-        background-color: rgba(15, 15, 15, 0.8);
-    }
-}
-
-.popup-title {
-    font-family: "EB Garamond", serif;
-    font-optical-sizing: auto;
-    font-weight: 500;
-    font-style: normal;
-}
-
-.popup-label {
-    font-family: "Inter", sans-serif;
-    font-optical-sizing: auto;
-    font-weight: 600;
-    font-style: normal;
-    margin-bottom: 4px;
-    display: block;
-}
-
-.popup-select {
-    width: 100%;
-    padding: 8px;
-    border-radius: 8px;
-    background-color: #f3f4f6;
-    border: 1px solid #d1d5db;
-    color: #111827;
-}
-
-.popup-select:focus {
-    outline: none;
-    ring: 2px;
-    ring-color: #3b82f6;
-}
-
-@media (prefers-color-scheme: dark) {
-    .popup-select {
-        background-color: #374151;
-        border: 1px solid #4b5563;
-        color: #ffffff;
-    }
-    
-    .popup-select:focus {
-        ring-color: #60a5fa;
-    }
-}
-
-/* Image Container Layout */
-.image-container {
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-    align-items: flex-start;
-}
-
-/* Info overlay buttons */
-.info-content button {
-    background-color: rgba(255, 255, 255, 0.2);
-    color: white;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    padding: 8px 16px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 14px;
-    transition: background-color 0.2s ease;
-}
-
-.info-content button:hover {
-    background-color: rgba(255, 255, 255, 0.3);
-}
-
-/* Logout button specific styling */
-#logout-btn {
-    background-color: rgba(220, 53, 69, 0.8) !important;
-    border-color: rgba(220, 53, 69, 0.5) !important;
-}
-
-#logout-btn:hover {
-    background-color: rgba(200, 35, 51, 0.9) !important;
-    border-color: rgba(200, 35, 51, 0.7) !important;
 }
