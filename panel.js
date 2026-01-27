@@ -1,7 +1,7 @@
 // panel.js
 async function updateEnvironmentDisplay() {
   try {
-    const result = await browser.storage.local.get(["environment"]);
+    const result = await chrome.storage.local.get(["environment"]);
     const env = result.environment || "not set";
     document.getElementById("currentEnv").textContent =
       `Current Environment: ${env}`;
@@ -12,7 +12,7 @@ async function updateEnvironmentDisplay() {
 
 async function setDevelopmentEnvironment() {
   try {
-    await browser.storage.local.set({ environment: "development" });
+    await chrome.storage.local.set({ environment: "development" });
     console.log("Set to development environment (localhost:3000)");
     await updateEnvironmentDisplay();
   } catch (error) {
@@ -22,7 +22,7 @@ async function setDevelopmentEnvironment() {
 
 async function setProductionEnvironment() {
   try {
-    await browser.storage.local.set({ environment: "production" });
+    await chrome.storage.local.set({ environment: "production" });
     console.log("Set to production environment (usetrmnl.com)");
     await updateEnvironmentDisplay();
   } catch (error) {

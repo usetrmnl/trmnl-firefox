@@ -1,74 +1,6 @@
 // Background script for TRMNL New Tab Display extension
 
-browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === "saveApiKey") {
-    saveApiKey(request.apiKey)
-      .then(() => {
-        if (sendResponse) sendResponse({ success: true });
-      })
-      .catch((err) => {
-        console.error("Error saving API key:", err);
-        if (sendResponse) sendResponse({ success: false, error: err.message });
-      });
-    return true;
-  } else if (request.action === "getCurrentImage") {
-    sendCurrentImage(sendResponse);
-    return true;
-  } else if (request.action === "forceRefresh") {
-    fetchTrmnlImage(true)
-      .then((result) => {
-        if (sendResponse) sendResponse({ success: !!result });
-      })
-      .catch((err) => {
-        console.error("Error during forced refresh:", err);
-        if (sendResponse) sendResponse({ success: false, error: err.message });
-      });
-    return true;
-  } else if (request.action === "logout") {
-    performLogout()
-      .then(() => {
-        if (sendResponse) sendResponse({ success: true });
-      })
-      .catch((err) => {
-        console.error("Error during logout:", err);
-        if (sendResponse) sendResponse({ success: false, error: err.message });
-      });
-    return true;
-  } else if (request.action === "refreshDevices") {
-    fetchAndStoreDevices()
-      .then(() => {
-        if (sendResponse) sendResponse({ success: true });
-      })
-      .catch((err) => {
-        console.error("Error refreshing devices:", err);
-        if (sendResponse) sendResponse({ success: false, error: err.message });
-      });
-    return true;
-  } else if (request.action === "startLogin") {
-    startLoginFlow()
-      .then(() => {
-        if (sendResponse) sendResponse({ success: true });
-      })
-      .catch((err) => {
-        console.error("Error starting login flow:", err);
-        if (sendResponse) sendResponse({ success: false, error: err.message });
-      });
-    return true;
-  } else if (request.action === "loginSuccess") {
-    handleLoginSuccess()
-      .then(() => {
-        if (sendResponse) sendResponse({ success: true });
-      })
-      .catch((err) => {
-        console.error("Error handling login success:", err);
-        if (sendResponse) sendResponse({ success: false, error: err.message });
-      });
-    return true;
-  }
-  return false;
-});
-
-browser.storage.onChanged.addListener((changes, namespace) => {
+chrome.storage.onChanged.addListener((changes, namespace) => {
   if (changes.environment) {
     console.log("Environment changed:", {
       oldValue: changes.environment.oldValue,
@@ -84,7 +16,7 @@ const HOSTS = {
 };
 
 const getBaseUrl = async () => {
-  const { environment } = await browser.storage.local.get("environment");
+  const { environment } = await chrome.storage.local.get("environment");
   return HOSTS[environment] || HOSTS.production;
 };
 
@@ -111,7 +43,7 @@ async function fetchAndStoreDevices() {
   try {
     // First check if we already have stored devices
     const { devices: storedDevices } =
-      await browser.storage.local.get("devices");
+      await chrome.storage.local.get("devices");
 
     const devicesUrl = await getDevicesUrl();
     const response = await fetch(devicesUrl);
@@ -123,7 +55,7 @@ async function fetchAndStoreDevices() {
     ) {
       const loginUrl = await getLoginUrl();
       // Open login page in a new tab
-      browser.tabs.create({ url: loginUrl });
+      chrome.tabs.create({ url: loginUrl });
       return storedDevices || null;
     }
 
@@ -139,13 +71,12 @@ async function fetchAndStoreDevices() {
     const devices = await response.json();
 
     // Always save the newly fetched devices
-    await browser.storage.local.set({ devices });
+    await chrome.storage.local.set({ devices });
 
     // If no device is selected, select the first one
-    const { selectedDevice } =
-      await browser.storage.local.get("selectedDevice");
+    const { selectedDevice } = await chrome.storage.local.get("selectedDevice");
     if (!selectedDevice && devices.length > 0) {
-      await browser.storage.local.set({ selectedDevice: devices[0] });
+      await chrome.storage.local.set({ selectedDevice: devices[0] });
     }
 
     return devices;
@@ -153,7 +84,7 @@ async function fetchAndStoreDevices() {
     console.error("Error fetching devices:", error);
     // Return stored devices if available
     const { devices: storedDevices } =
-      await browser.storage.local.get("devices");
+      await chrome.storage.local.get("devices");
     return storedDevices || null;
   }
 }
@@ -163,7 +94,7 @@ async function getFirstDeviceApiKey() {
   try {
     // First check if we already have stored devices
     const { devices: storedDevices } =
-      await browser.storage.local.get("devices");
+      await chrome.storage.local.get("devices");
 
     const devicesUrl = await getDevicesUrl();
     const response = await fetch(devicesUrl);
@@ -174,7 +105,7 @@ async function getFirstDeviceApiKey() {
       (!storedDevices || storedDevices.length === 0)
     ) {
       const loginUrl = await getLoginUrl();
-      browser.tabs.create({ url: loginUrl });
+      chrome.tabs.create({ url: loginUrl });
       return null;
     }
 
@@ -182,7 +113,7 @@ async function getFirstDeviceApiKey() {
       // If we have stored devices, use them instead of failing
       if (storedDevices && storedDevices.length > 0) {
         console.log("Using stored devices due to fetch error");
-        await browser.storage.local.set({
+        await chrome.storage.local.set({
           selectedDevice: storedDevices[0],
           environment: "production",
         });
@@ -194,7 +125,7 @@ async function getFirstDeviceApiKey() {
     const devices = await response.json();
     if (devices && devices.length > 0) {
       // Store the devices
-      await browser.storage.local.set({
+      await chrome.storage.local.set({
         devices,
         selectedDevice: devices[0],
         environment: "production",
@@ -212,7 +143,7 @@ async function getFirstDeviceApiKey() {
     console.error("Error fetching devices:", error);
     // Check for stored devices
     const { devices: storedDevices } =
-      await browser.storage.local.get("devices");
+      await chrome.storage.local.get("devices");
     if (storedDevices && storedDevices.length > 0) {
       return storedDevices[0].api_key;
     }
@@ -222,7 +153,7 @@ async function getFirstDeviceApiKey() {
 
 // Send the current image to the requester
 async function sendCurrentImage(sendResponse) {
-  const storage = await browser.storage.local.get([
+  const storage = await chrome.storage.local.get([
     "currentImage",
     "lastFetch",
     "refreshRate",
@@ -231,41 +162,36 @@ async function sendCurrentImage(sendResponse) {
 }
 
 // Initialize when extension is installed or updated
-browser.runtime.onInstalled.addListener(async () => {
+chrome.runtime.onInstalled.addListener(async () => {
   console.log("TRMNL New Tab Display extension installed");
 
-  // Set default environment
-  await browser.storage.local.set({ environment: "production" });
+  // Set default environment and get devices
+  await chrome.storage.local.set({ environment: "production" });
   API_URL = await getApiUrl();
 
-  // Check if user is already authenticated
-  const isAuthenticated = await checkAuthentication();
-  
-  if (isAuthenticated) {
-    console.log("User is already authenticated, fetching devices");
-    const devices = await fetchAndStoreDevices();
+  const devices = await fetchAndStoreDevices();
 
-    if (devices && devices.length > 0) {
-      // Set the first device and its API key
-      await browser.storage.local.set({
-        selectedDevice: devices[0],
-        lastFetch: 0,
-        nextFetch: 0,
-        refreshRate: DEFAULT_REFRESH_RATE,
-        retryCount: 0,
-        retryAfter: null,
-      });
+  if (devices && devices.length > 0) {
+    // Set the first device and its API key
+    await chrome.storage.local.set({
+      selectedDevice: devices[0],
+      lastFetch: 0,
+      nextFetch: 0,
+      refreshRate: DEFAULT_REFRESH_RATE,
+      retryCount: 0,
+      retryAfter: null,
+    });
 
-      // Start the initial image fetch
-      fetchTrmnlImage();
-    }
-  } else {
-    console.log("User not authenticated, will need to login");
+    // Attempt to fetch an image with the device's API key
+    fetchTrmnlImage();
   }
+
+  // Set up alarm for periodic image fetching
+  setupRefreshAlarm(DEFAULT_REFRESH_RATE);
 });
 
 // Listen for alarms to trigger image refresh
-browser.alarms.onAlarm.addListener((alarm) => {
+chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === "refreshTrmnlImage") {
     fetchTrmnlImage();
   } else if (alarm.name === "retryTrmnlImage") {
@@ -275,7 +201,7 @@ browser.alarms.onAlarm.addListener((alarm) => {
 });
 
 // Listen for messages from popup or new tab page
-browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "saveApiKey") {
     saveApiKey(request.apiKey)
       .then(() => {
@@ -325,7 +251,7 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 // Save API key and immediately fetch an image
 async function saveApiKey(apiKey) {
-  await browser.storage.local.set({
+  await chrome.storage.local.set({
     apiKey,
     // Reset any retry information when changing API key
     retryCount: 0,
@@ -340,10 +266,10 @@ async function saveApiKey(apiKey) {
 // Set up the refresh alarm
 function setupRefreshAlarm(seconds) {
   // Clear any existing alarm
-  browser.alarms.clear("refreshTrmnlImage");
+  chrome.alarms.clear("refreshTrmnlImage");
 
   // Create new alarm
-  browser.alarms.create("refreshTrmnlImage", {
+  chrome.alarms.create("refreshTrmnlImage", {
     periodInMinutes: seconds / 60, // Convert seconds to minutes
   });
 
@@ -351,155 +277,61 @@ function setupRefreshAlarm(seconds) {
 }
 
 // Handle storage limits for data URLs
-// Firefox storage also has limits
+// Chrome storage has limits, so we need to be careful with large data URLs
 async function checkStorageUsage() {
-  // Get current storage usage - Firefox has different API for this
-  // This is a simplification
-  const storageUsage = 0; // Replace with actual implementation if needed
-  const storageLimit = 5242880; // 5MB default for Firefox
+  // Firefox does not support this method
+  if (chrome?.storage?.local?.getBytesInUse) {
+    // Get current storage usage
+    const storageUsage = await chrome.storage.local.getBytesInUse(null);
+    const storageLimit = chrome.storage.local.QUOTA_BYTES || 10485760; // 10MB default
 
-  const percentUsed = (storageUsage / storageLimit) * 100;
-  console.log(
-    `Storage usage: ${(storageUsage / 1024 / 1024).toFixed(2)}MB / ${(storageLimit / 1024 / 1024).toFixed(2)}MB (${percentUsed.toFixed(2)}%)`,
-  );
+    const percentUsed = (storageUsage / storageLimit) * 100;
+    console.log(
+      `Storage usage: ${(storageUsage / 1024 / 1024).toFixed(2)}MB / ${(storageLimit / 1024 / 1024).toFixed(2)}MB (${percentUsed.toFixed(2)}%)`,
+    );
 
-  // If we're using more than 80% of our quota, we might want to clean up old images
-  return percentUsed > 80;
+    // If we're using more than 80% of our quota, we might want to clean up old images
+    return percentUsed > 80;
+  }
+  return false; // Assume no storage limits if method is not available
 }
 
 let fetchInProgress = false;
 
-// Start the login flow by opening the login page
-async function startLoginFlow() {
-  console.log("Starting login flow");
-  const loginUrl = await getLoginUrl();
-  
-  // Open login page in a new tab
-  await browser.tabs.create({ 
-    url: loginUrl,
-    active: true
-  });
-  
-  console.log("Login page opened:", loginUrl);
-}
-
-// Handle successful login - fetch devices and setup extension
-async function handleLoginSuccess() {
-  console.log("Handling successful login");
-  
-  try {
-    // Fetch devices from the API
-    const devices = await fetchAndStoreDevices();
-    
-    if (devices && devices.length > 0) {
-      console.log("Login successful - devices fetched:", devices.length);
-      
-      // Set up the extension with the first device
-      await browser.storage.local.set({
-        selectedDevice: devices[0],
-        apiKey: devices[0].api_key,
-        lastFetch: 0,
-        nextFetch: 0,
-        refreshRate: DEFAULT_REFRESH_RATE,
-        retryCount: 0,
-        retryAfter: null,
-      });
-      
-      // Start fetching images
-      setTimeout(() => {
-        fetchTrmnlImage(true);
-      }, 1000);
-      
-      // Notify all new tab pages that login was successful
-      const tabs = await browser.tabs.query({});
-      for (const tab of tabs) {
-        if (tab.url && tab.url.includes('newtab.html')) {
-          browser.tabs.sendMessage(tab.id, { action: "loginSuccess" }).catch(() => {
-            // Ignore errors for tabs that can't receive messages
-          });
-        }
-      }
-      
-      return true;
-    } else {
-      throw new Error("No devices found after login");
-    }
-  } catch (error) {
-    console.error("Error during login success handling:", error);
-    throw error;
-  }
-}
-
-// Check if user is authenticated by trying to fetch devices
-async function checkAuthentication() {
-  try {
-    const baseUrl = await getBaseUrl();
-    const response = await fetch(`${baseUrl}/devices.json`);
-    
-    if (response.ok) {
-      console.log("User is authenticated");
-      return true;
-    } else if (response.status === 401 || response.status === 403) {
-      console.log("User is not authenticated");
-      return false;
-    } else {
-      console.warn("Unexpected response status:", response.status);
-      return false;
-    }
-  } catch (error) {
-    console.error("Error checking authentication:", error);
-    return false;
-  }
-}
-
 // Fetch an image from the TRMNL API
-async function performLogout() {
-  console.log("Performing logout - clearing all extension data");
-  
-  // Clear all stored data
-  await browser.storage.local.clear();
-  
-  // Clear any active alarms
-  const alarms = await browser.alarms.getAll();
-  for (const alarm of alarms) {
-    await browser.alarms.clear(alarm.name);
-  }
-  
-  console.log("Logout completed - all data cleared");
-  
-  // New tab pages will automatically redirect via storage change listener
-  console.log("New tab pages will be redirected automatically via storage change detection");
-}
-
 async function fetchTrmnlImage(forceRefresh = false) {
-  // Prevent concurrent requests
-  if (fetchInProgress && !forceRefresh) {
+  console.log("Fetching TRMNL image");
+
+  // Prevent concurrent fetches
+  if (fetchInProgress) {
     console.log("Fetch already in progress, skipping");
     return null;
   }
 
   fetchInProgress = true;
-  const currentTime = Date.now();
 
   // Get the current API URL and initialize environment if needed
-  const environment = await browser.storage.local.get("environment");
+  const environment = await chrome.storage.local.get("environment");
   if (!environment.environment) {
-    await browser.storage.local.set({ environment: "production" });
+    await chrome.storage.local.set({ environment: "production" });
   }
   API_URL = await getApiUrl();
 
   console.log("Fetching TRMNL image");
 
-  const storage = await browser.storage.local.get([
+  const storage = await chrome.storage.local.get([
     "selectedDevice",
     "lastFetch",
     "refreshRate",
     "nextFetch",
     "retryCount",
     "retryAfter",
+    "currentImage",
   ]);
 
   const apiKey = storage.selectedDevice?.api_key;
+
+  const currentTime = Date.now();
 
   // If no API key, try to get one from devices first
   if (!apiKey) {
@@ -531,10 +363,10 @@ async function fetchTrmnlImage(forceRefresh = false) {
 
     // Handle unauthorized (redirect to login only if we have no devices)
     if (response.status === 401 || response.status === 403) {
-      const { devices } = await browser.storage.local.get("devices");
+      const { devices } = await chrome.storage.local.get("devices");
       if (!devices || devices.length === 0) {
         const loginUrl = await getLoginUrl();
-        browser.tabs.create({ url: loginUrl });
+        chrome.tabs.create({ url: loginUrl });
         fetchInProgress = false;
         return null;
       } else {
@@ -563,15 +395,15 @@ async function fetchTrmnlImage(forceRefresh = false) {
           3600000,
         );
 
-        await browser.storage.local.set({ retryCount: retryCount });
+        await chrome.storage.local.set({ retryCount: retryCount });
       }
 
       console.log(`Setting retry after ${retryAfter / 1000} seconds`);
       const retryTime = currentTime + retryAfter;
-      await browser.storage.local.set({ retryAfter: retryTime });
+      await chrome.storage.local.set({ retryAfter: retryTime });
 
       // Schedule a retry
-      browser.alarms.create("retryTrmnlImage", {
+      chrome.alarms.create("retryTrmnlImage", {
         when: retryTime,
       });
 
@@ -581,7 +413,7 @@ async function fetchTrmnlImage(forceRefresh = false) {
 
     // Reset retry count on successful requests
     if (storage.retryCount > 0) {
-      await browser.storage.local.set({ retryCount: 0, retryAfter: null });
+      await chrome.storage.local.set({ retryCount: 0, retryAfter: null });
     }
 
     if (!response.ok) {
@@ -604,7 +436,7 @@ async function fetchTrmnlImage(forceRefresh = false) {
 
       // Update just the next fetch time without downloading the image again
       const nextFetch = currentTime + refreshRate * 1000;
-      await browser.storage.local.set({
+      await chrome.storage.local.set({
         refreshRate: refreshRate,
         nextFetch: nextFetch,
         lastFetch: currentTime,
@@ -633,7 +465,8 @@ async function fetchTrmnlImage(forceRefresh = false) {
       throw new Error(`Failed to fetch image: ${imageResponse.status}`);
     }
 
-    // Convert the image to a base64 data URL
+    // Instead of using Blob URLs (which aren't supported in service workers),
+    // convert the image to a base64 data URL or store the raw data
     const imageBlob = await imageResponse.blob();
 
     // Create a FileReader to convert the blob to a data URL
@@ -658,7 +491,7 @@ async function fetchTrmnlImage(forceRefresh = false) {
       );
     }
 
-    await browser.storage.local.set({
+    await chrome.storage.local.set({
       currentImage: {
         url: imageDataUrl,
         originalUrl: data.image_url,
@@ -677,7 +510,7 @@ async function fetchTrmnlImage(forceRefresh = false) {
 
     // Notify any open tabs that a new image is available
     try {
-      browser.runtime.sendMessage({ action: "imageUpdated" }).catch(() => {
+      chrome.runtime.sendMessage({ action: "imageUpdated" }).catch(() => {
         // This is normal if no listeners are active
         console.log("No active listeners for imageUpdated message");
       });
@@ -698,12 +531,12 @@ async function fetchTrmnlImage(forceRefresh = false) {
     const retryDelay = Math.min(60000 * Math.pow(2, retryCount - 1), 3600000); // Max 1 hour
     const retryTime = currentTime + retryDelay;
 
-    await browser.storage.local.set({
+    await chrome.storage.local.set({
       retryCount: retryCount,
       retryAfter: retryTime,
     });
 
-    browser.alarms.create("retryTrmnlImage", {
+    chrome.alarms.create("retryTrmnlImage", {
       when: retryTime,
     });
 

@@ -1,4 +1,4 @@
-browser.devtools.panels.create(
+chrome.devtools.panels.create(
   "TRMNL",
   "",
   "/panel.html", // Make sure this path is correct

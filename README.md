@@ -6,7 +6,7 @@ A Firefox-only browser extension that displays images from your TRMNL device in 
 
 This extension brings TRMNL's calm, distraction-free environment directly to your Firefox new tab page. It connects to your TRMNL account and displays the current screen from your selected device, automatically refreshing at configurable intervals.
 
-**Note**: This extension is specifically designed for Firefox and uses Firefox-native APIs. It will not work in Chrome or other browsers.
+**Note**: This extension was originally designed for Chrome but adopts [these changes](https://github.com/usetrmnl/trmnl-chrome/pull/5) to work with Firefox-native APIs.
 
 ## Requirements
 
@@ -78,26 +78,10 @@ This will create `trmnl-firefox.xpi` which can be installed in Firefox.
   - Use the "Logout" button in the bottom overlay of any new tab page
 - **Developer Mode**: Use the Firefox Developer Tools to access the TRMNL panel for environment switching
 
-## Project Structure
-
-```
-trmnl-firefox/
-├── code/                    # Extension source code
-│   ├── manifest.json       # Firefox extension configuration
-│   ├── newtab.html/js      # New tab page implementation
-│   ├── popup.html/js       # Settings popup
-│   ├── background.js       # Background script for API calls
-│   ├── devtools.html/js    # Developer tools integration
-│   ├── panel.html/js       # DevTools panel
-│   └── styles.css          # Styling
-├── pack.rb                 # Ruby script to package extension
-└── README.md              # This file
-```
-
 ## Development
 
 The extension uses:
-- Firefox WebExtensions APIs (Manifest V2)
+- Firefox WebExtensions APIs (Manifest V3)
 - Vanilla JavaScript
 - Native Firefox storage and messaging APIs
 - CSS with dark mode support
