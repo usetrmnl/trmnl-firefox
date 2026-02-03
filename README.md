@@ -1,6 +1,9 @@
 # TRMNL Firefox Extension
 
-A Firefox-only browser extension that displays images from your TRMNL device in new tab pages with automatic refresh functionality.
+A Firefox browser extension that displays images from your TRMNL device in new tab pages with automatic refresh functionality.
+
+Install from the official Add-ons library here:
+[https://addons.mozilla.org/en-US/firefox/addon/trmnl-new-tab-display/](https://addons.mozilla.org/en-US/firefox/addon/trmnl-new-tab-display/)
 
 ## About
 
