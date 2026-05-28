@@ -38,6 +38,40 @@ const getLoginUrl = async () => {
 };
 
 const DEFAULT_REFRESH_RATE = 30; // seconds
+const LOGIN_PROMPT_STATE_KEY = "loginPromptState";
+const LOGIN_PROMPT_RETRY_MS = 15 * 60 * 1000;
+
+async function clearLoginPromptState() {
+  await chrome.storage.local.remove(LOGIN_PROMPT_STATE_KEY);
+}
+
+async function promptLoginTab(reason) {
+  const now = Date.now();
+  const { [LOGIN_PROMPT_STATE_KEY]: loginPromptState } =
+    await chrome.storage.local.get(LOGIN_PROMPT_STATE_KEY);
+
+  if (
+    loginPromptState?.pending &&
+    now - loginPromptState.lastOpenedAt < LOGIN_PROMPT_RETRY_MS
+  ) {
+    console.log(
+      `Skipping login tab open (${reason}) - already prompted ${Math.floor((now - loginPromptState.lastOpenedAt) / 1000)}s ago`,
+    );
+    return false;
+  }
+
+  await chrome.storage.local.set({
+    [LOGIN_PROMPT_STATE_KEY]: {
+      pending: true,
+      lastOpenedAt: now,
+      reason,
+    },
+  });
+
+  const loginUrl = await getLoginUrl();
+  chrome.tabs.create({ url: loginUrl });
+  return true;
+}
 
 async function fetchAndStoreDevices() {
   try {
@@ -53,9 +87,7 @@ async function fetchAndStoreDevices() {
       (response.status === 401 || response.status === 403) &&
       (!storedDevices || storedDevices.length === 0)
     ) {
-      const loginUrl = await getLoginUrl();
-      // Open login page in a new tab
-      chrome.tabs.create({ url: loginUrl });
+      await promptLoginTab("fetchAndStoreDevices unauthorized");
       return storedDevices || null;
     }
 
@@ -69,6 +101,7 @@ async function fetchAndStoreDevices() {
     }
 
     const devices = await response.json();
+    await clearLoginPromptState();
 
     // Always save the newly fetched devices
     await chrome.storage.local.set({ devices });
@@ -104,8 +137,7 @@ async function getFirstDeviceApiKey() {
       (response.status === 401 || response.status === 403) &&
       (!storedDevices || storedDevices.length === 0)
     ) {
-      const loginUrl = await getLoginUrl();
-      chrome.tabs.create({ url: loginUrl });
+      await promptLoginTab("getFirstDeviceApiKey unauthorized");
       return null;
     }
 
@@ -124,6 +156,7 @@ async function getFirstDeviceApiKey() {
 
     const devices = await response.json();
     if (devices && devices.length > 0) {
+      await clearLoginPromptState();
       // Store the devices
       await chrome.storage.local.set({
         devices,
@@ -166,7 +199,14 @@ chrome.runtime.onInstalled.addListener(async () => {
   console.log("TRMNL New Tab Display extension installed");
 
   // Set default environment and get devices
-  await chrome.storage.local.set({ environment: "production" });
+  await chrome.storage.local.set({
+    environment: "production",
+    [LOGIN_PROMPT_STATE_KEY]: {
+      pending: false,
+      lastOpenedAt: 0,
+      reason: "install",
+    },
+  });
   API_URL = await getApiUrl();
 
   const devices = await fetchAndStoreDevices();
@@ -365,8 +405,7 @@ async function fetchTrmnlImage(forceRefresh = false) {
     if (response.status === 401 || response.status === 403) {
       const { devices } = await chrome.storage.local.get("devices");
       if (!devices || devices.length === 0) {
-        const loginUrl = await getLoginUrl();
-        chrome.tabs.create({ url: loginUrl });
+        await promptLoginTab("fetchTrmnlImage unauthorized");
         fetchInProgress = false;
         return null;
       } else {
@@ -379,6 +418,7 @@ async function fetchTrmnlImage(forceRefresh = false) {
 
     // Handle rate limiting (429)
     if (response.status === 429) {
+      await clearLoginPromptState();
       console.warn("Rate limited by the API (429)");
 
       // Get retry delay from header or use exponential backoff
@@ -421,6 +461,7 @@ async function fetchTrmnlImage(forceRefresh = false) {
         `HTTP error: ${response.status} - ${response.statusText}`,
       );
     }
+    await clearLoginPromptState();
 
     const data = await response.json();
     console.log("TRMNL API response:", data);
