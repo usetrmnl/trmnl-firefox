@@ -14,7 +14,7 @@ This extension brings TRMNL's calm, distraction-free environment directly to you
 ## Requirements
 
 - Firefox browser
-- TRMNL account with a physical device or [BYOD](https://shop.usetrmnl.com/products/byod) license
+- TRMNL account with a physical device or [BYOD license](https://shop.trmnl.com/products/byod)
 
 ## Features
 
