@@ -31,8 +31,8 @@ async function initPopup() {
 
 async function loadDevices() {
   // First try to get devices from local storage
-  const { devices: storedDevices, environment } =
-    await chrome.storage.local.get(["devices", "environment"]);
+  const { devices: storedDevices } =
+    await chrome.storage.local.get(["devices"]);
 
   let devices = [];
 
@@ -43,13 +43,8 @@ async function loadDevices() {
   } else {
     // If no devices in storage, fetch from server
     console.log("No devices in storage, fetching from server");
-    const apiUrl =
-      environment === "development"
-        ? "http://localhost:3000/devices.json"
-        : "https://trmnl.com/devices.json";
-
     try {
-      const response = await fetch(apiUrl);
+      const response = await fetch(await getDevicesUrl());
       devices = await response.json();
 
       // Store devices in local storage for future use

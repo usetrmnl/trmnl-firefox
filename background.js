@@ -9,33 +9,7 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
   }
 });
 
-// Constants
-const HOSTS = {
-  development: "http://localhost:3000",
-  production: "https://trmnl.com",
-};
-
-const getBaseUrl = async () => {
-  const { environment } = await chrome.storage.local.get("environment");
-  return HOSTS[environment] || HOSTS.production;
-};
-
-const getDevicesUrl = async () => {
-  const baseUrl = await getBaseUrl();
-  return `${baseUrl}/devices.json`;
-};
-
 let API_URL = `${HOSTS.production}/api/current_screen`; // Default to production
-
-const getApiUrl = async () => {
-  const baseUrl = await getBaseUrl();
-  return `${baseUrl}/api/current_screen`;
-};
-
-const getLoginUrl = async () => {
-  const baseUrl = await getBaseUrl();
-  return `${baseUrl}/login`;
-};
 
 const DEFAULT_REFRESH_RATE = 30; // seconds
 const LOGIN_PROMPT_STATE_KEY = "loginPromptState";

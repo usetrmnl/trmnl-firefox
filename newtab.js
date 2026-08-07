@@ -22,13 +22,6 @@ async function initNewTab() {
   try {
     await initStyles();
 
-    // First try to get the environment setting
-    const { environment } = await chrome.storage.local.get("environment");
-    const baseUrl =
-      environment === "development"
-        ? "http://localhost:3000"
-        : "https://trmnl.com";
-
     // Try to get devices from local storage first
     const { devices: storedDevices } =
       await chrome.storage.local.get("devices");
@@ -52,11 +45,11 @@ async function initNewTab() {
 
     // If we don't have devices in storage, fetch from server
     console.log("No devices in local storage, fetching from server");
-    const response = await fetch(`${baseUrl}/devices.json`);
+    const response = await fetch(await getDevicesUrl());
 
     // If unauthorized or forbidden, redirect to login
     if (response.status === 401 || response.status === 403) {
-      window.location.href = `${baseUrl}/login`;
+      window.location.href = await getLoginUrl();
       return;
     }
 
@@ -70,7 +63,7 @@ async function initNewTab() {
 
     if (!devices || devices.length === 0) {
       // No devices available, redirect to login
-      window.location.href = `${baseUrl}/login`;
+      window.location.href = await getLoginUrl();
       return;
     }
 
@@ -87,12 +80,7 @@ async function initNewTab() {
   } catch (error) {
     console.error("Error during initialization:", error);
     // On any error, redirect to login
-    const { environment } = await chrome.storage.local.get("environment");
-    const baseUrl =
-      environment === "development"
-        ? "http://localhost:3000"
-        : "https://trmnl.com";
-    window.location.href = `${baseUrl}/login`;
+    window.location.href = await getLoginUrl();
   }
 }
 
