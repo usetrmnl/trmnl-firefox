@@ -13,7 +13,7 @@ async function updateEnvironmentDisplay() {
 async function setDevelopmentEnvironment() {
   try {
     await chrome.storage.local.set({ environment: "development" });
-    console.log("Set to development environment (localhost:3000)");
+    console.log(`Set to development environment (${HOSTS.development})`);
     await updateEnvironmentDisplay();
   } catch (error) {
     console.error("Error setting development:", error);
@@ -23,7 +23,7 @@ async function setDevelopmentEnvironment() {
 async function setProductionEnvironment() {
   try {
     await chrome.storage.local.set({ environment: "production" });
-    console.log("Set to production environment (trmnl.com)");
+    console.log(`Set to production environment (${HOSTS.production})`);
     await updateEnvironmentDisplay();
   } catch (error) {
     console.error("Error setting production:", error);
